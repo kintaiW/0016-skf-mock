@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SKF Mock SDK — GM/T 0016-2012 智能密码钥匙纯软件模拟库</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
+</head>
+<body>
+
+<!-- 导航栏 -->
+<nav class="navbar">
+  <div class="nav-inner">
+    <a class="nav-brand" href="index.html">🔑 SKF Mock SDK</a>
+    <ul class="nav-links">
+      <li><a href="index.html" class="active">首页</a></li>
+      <li><a href="guide.html">快速开始</a></li>
+      <li><a href="api.html">接口文档</a></li>
+      <li><a href="config.html">配置说明</a></li>
+      <li><a href="https://github.com/kintaiW/0016-skf-mock/releases" target="_blank">下载 ↗</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- 英雄区 -->
+<header class="hero">
+  <div class="hero-inner">
+    <div class="badge">GM/T 0016-2012</div>
+    <h1>SKF Mock SDK</h1>
+    <p class="hero-sub">无需 USB Key 硬件，在任意开发环境中调用标准 SKF 接口<br>纯 Rust 实现 · 标准 C ABI · 国密算法全覆盖</p>
+    <div class="hero-btns">
+      <a href="https://github.com/kintaiW/0016-skf-mock/releases" class="btn btn-primary" target="_blank">⬇ 下载动态库</a>
+      <a href="guide.html" class="btn btn-outline">快速开始</a>
+    </div>
+    <div class="hero-badges">
+      <span class="tag">SM2</span>
+      <span class="tag">SM3</span>
+      <span class="tag">SM4</span>
+      <span class="tag">Rust</span>
+      <span class="tag">cdylib</span>
+      <span class="tag">mPlugin</span>
+    </div>
+  </div>
+</header>
+
+<!-- 特性卡片 -->
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">核心特性</h2>
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-icon">📋</div>
+        <h3>完整 SKF 接口</h3>
+        <p>覆盖 GM/T 0016-2012 标准的设备管理、应用/容器管理、PIN 验证、证书/文件管理、密码运算，共 50+ 个导出函数。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🔑</div>
+        <h3>国密算法支持</h3>
+        <p>SM2（签名/加密/密钥对导出）、SM3（单次/增量哈希、Z 值计算）、SM4（ECB/CBC + PKCS7 填充），基于 libsmx 纯软件实现。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🔌</div>
+        <h3>标准 C ABI</h3>
+        <p>输出 <code>.so</code>/<code>.dll</code> 动态库，<code>extern "C"</code> 导出，与任意 C/C++ 项目直接集成，可作为 mPlugin 底层 SKF DLL 使用。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🏗️</div>
+        <h3>三级层次模型</h3>
+        <p>严格遵循 SKF 规范的 <strong>设备 → 应用 → 容器</strong> 层次结构，支持多应用、多容器、PIN 管理、应用文件存储。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">⚙️</div>
+        <h3>预置密钥配置</h3>
+        <p>通过 <code>mock_keys.toml</code> 预置应用、容器、SM2 签名/加密密钥对、证书，模拟真实 USB Key 的存储行为。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🚀</div>
+        <h3>零硬件依赖</h3>
+        <p>无需真实 USB Key、智能密码钥匙等硬件设备，在 CI/CD 流水线、容器环境、开发机中开箱即用。</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- 调用流程 -->
+<section class="section section-gray">
+  <div class="container">
+    <h2 class="section-title">标准调用流程</h2>
+    <p class="section-sub">严格遵循 GM/T 0016 规定的三级句柄层次，PIN 验证、签名验签均有错误码保护</p>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div class="flow-label">SKF_ConnectDev</div>
+        <div class="flow-desc">加载配置<br>连接设备</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div class="flow-label">SKF_OpenApplication</div>
+        <div class="flow-desc">打开应用<br>加载容器列表</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <div class="flow-label">SKF_VerifyPIN</div>
+        <div class="flow-desc">验证用户 PIN<br>获取操作权限</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">4</div>
+        <div class="flow-label">SKF_OpenContainer</div>
+        <div class="flow-desc">打开容器<br>访问密钥对</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">5</div>
+        <div class="flow-label">密码运算</div>
+        <div class="flow-desc">签名 / 加解密<br>SM2/SM3/SM4</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">6</div>
+        <div class="flow-label">CloseContainer → CloseApplication → DisConnectDev</div>
+        <div class="flow-desc">清理资源</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 代码示例 -->
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">代码示例</h2>
+    <div class="code-tabs">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="showTab('c')">C</button>
+        <button class="tab-btn" onclick="showTab('rust')">Rust</button>
+      </div>
+      <div id="tab-c" class="tab-content">
+<pre><code class="lang-c"><span class="cm">/* skf-mock 作为动态库加载（dlopen / LoadLibrary）*/</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;dlfcn.h&gt;</span>
+
+<span class="kw">typedef</span> <span class="kw">unsigned long</span> ULONG;
+<span class="kw">typedef</span> <span class="kw">void</span>* HANDLE;
+
+<span class="kw">int</span> main() {
+    <span class="kw">void</span> *lib = dlopen(<span class="str">"./libskf_mock.so"</span>, RTLD_LAZY);
+
+    <span class="cm">/* 1. 连接设备 */</span>
+    ULONG (*SKF_ConnectDev)(<span class="kw">const char</span>*, HANDLE*);
+    SKF_ConnectDev = dlsym(lib, <span class="str">"SKF_ConnectDev"</span>);
+    HANDLE hDev = NULL;
+    SKF_ConnectDev(<span class="str">"MockSKFDevice"</span>, &amp;hDev);
+
+    <span class="cm">/* 2. 打开应用 + 验证 PIN */</span>
+    ULONG (*SKF_OpenApplication)(HANDLE, <span class="kw">const char</span>*, HANDLE*);
+    ULONG (*SKF_VerifyPIN)(HANDLE, ULONG, <span class="kw">const char</span>*, ULONG*);
+    HANDLE hApp = NULL;
+    dlsym(lib, <span class="str">"SKF_OpenApplication"</span>); <span class="cm">// ... 调用</span>
+
+    <span class="cm">/* 3. 打开容器 + SM2 签名 */</span>
+    <span class="cm">// SKF_OpenContainer → SKF_ECCSignData → SKF_ECCVerify</span>
+
+    <span class="cm">/* 4. 清理 */</span>
+    <span class="cm">// SKF_CloseContainer → SKF_CloseApplication → SKF_DisConnectDev</span>
+    dlclose(lib);
+    <span class="kw">return</span> 0;
+}</code></pre>
+      </div>
+      <div id="tab-rust" class="tab-content" style="display:none">
+<pre><code class="lang-rust"><span class="kw">use</span> skf_mock::ffi::{device_ffi::*, app_ffi::*, container_ffi::*, crypto_ffi::*};
+<span class="kw">use</span> std::ffi::CString;
+<span class="kw">use</span> std::ptr;
+
+<span class="kw">fn</span> main() {
+    <span class="cm">// 1. 连接设备</span>
+    <span class="kw">let</span> name = CString::new(<span class="str">"MockSKFDevice"</span>).unwrap();
+    <span class="kw">let mut</span> h_dev = ptr::null_mut();
+    <span class="kw">unsafe</span> { SKF_ConnectDev(name.as_ptr() <span class="kw">as</span> *<span class="kw">mut</span> _, &amp;<span class="kw">mut</span> h_dev); }
+
+    <span class="cm">// 2. 打开应用 + 验证 PIN</span>
+    <span class="kw">let</span> app_name = CString::new(<span class="str">"MyApp"</span>).unwrap();
+    <span class="kw">let mut</span> h_app = ptr::null_mut();
+    <span class="kw">unsafe</span> { SKF_OpenApplication(h_dev, app_name.as_ptr() <span class="kw">as</span> *<span class="kw">mut</span> _, &amp;<span class="kw">mut</span> h_app); }
+
+    <span class="kw">let</span> pin = CString::new(<span class="str">"22222222"</span>).unwrap();
+    <span class="kw">let mut</span> retry = <span class="num">0u32</span>;
+    <span class="kw">unsafe</span> { SKF_VerifyPIN(h_app, <span class="num">1</span>, pin.as_ptr() <span class="kw">as</span> *<span class="kw">mut</span> _, &amp;<span class="kw">mut</span> retry); }
+
+    <span class="cm">// 3. 打开容器 + SM2 签名</span>
+    <span class="kw">let</span> container_name = CString::new(<span class="str">"MyContainer"</span>).unwrap();
+    <span class="kw">let mut</span> h_container = ptr::null_mut();
+    <span class="kw">unsafe</span> { SKF_OpenContainer(h_app, container_name.as_ptr() <span class="kw">as</span> *<span class="kw">mut</span> _, &amp;<span class="kw">mut</span> h_container); }
+
+    <span class="cm">// ... SKF_ECCSignData / SKF_ECCVerify</span>
+
+    <span class="cm">// 4. 清理</span>
+    <span class="kw">unsafe</span> {
+        SKF_CloseContainer(h_container);
+        SKF_CloseApplication(h_app);
+        SKF_DisConnectDev(h_dev);
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 算法矩阵 -->
+<section class="section section-gray">
+  <div class="container">
+    <h2 class="section-title">算法支持矩阵</h2>
+    <table class="alg-table">
+      <thead>
+        <tr><th>算法</th><th>模式/用途</th><th>标识常量</th><th>状态</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>SM2</td><td>数字签名 (ECCSignData / ExtECCSign)</td><td><code>SGD_SM2_1</code> = 0x00020100</td><td><span class="status ok">✓ 支持</span></td></tr>
+        <tr><td>SM2</td><td>密钥交换</td><td><code>SGD_SM2_2</code> = 0x00020200</td><td><span class="status wip">⚠ Stub</span></td></tr>
+        <tr><td>SM2</td><td>公钥加密 (ExtECCEncrypt)</td><td><code>SGD_SM2_3</code> = 0x00020400</td><td><span class="status ok">✓ 支持</span></td></tr>
+        <tr><td>SM3</td><td>单次/增量哈希、Z 值计算</td><td><code>SGD_SM3</code> = 0x00000001</td><td><span class="status ok">✓ 支持</span></td></tr>
+        <tr><td>SM4</td><td>ECB（含 PKCS7 填充）</td><td><code>SGD_SM4_ECB</code> = 0x00000401</td><td><span class="status ok">✓ 支持</span></td></tr>
+        <tr><td>SM4</td><td>CBC（含 PKCS7 填充）</td><td><code>SGD_SM4_CBC</code> = 0x00000402</td><td><span class="status ok">✓ 支持</span></td></tr>
+        <tr><td>SM4</td><td>MAC (CBC-MAC)</td><td>—</td><td><span class="status wip">⚠ Stub</span></td></tr>
+        <tr><td>RSA</td><td>签名 / 加密 / 密钥对</td><td>—</td><td><span class="status wip">⚠ Stub</span></td></tr>
+      </tbody>
+    </table>
+    <div class="callout callout-info" style="max-width:900px;margin:1.5rem auto 0;">
+      <strong>说明</strong>：GM/T 0016 SKF 的 SM2 算法标识值与 GM/T 0018 SDF 不同。mPlugin JS 层使用 <code>SGD_SM2_1</code> 和 <code>SGD_SM2_3</code>。
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <p>SKF Mock SDK · 基于 <a href="https://crates.io/crates/libsmx">libsmx</a> · GM/T 0016-2012</p>
+    <p class="footer-sub">仅供开发测试，示例密钥请勿用于生产环境</p>
+  </div>
+</footer>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).style.display = 'block';
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

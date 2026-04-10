@@ -1,0 +1,122 @@
+name: Release
+
+# 触发条件：推送形如 v0.1.0、v1.2.3 的 tag 时自动构建并发布 Release
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:  # 允许手动触发（用于调试）
+
+permissions:
+  contents: write  # 创建 Release 需要 write 权限
+
+jobs:
+  build-linux:
+    # Reason: 固定 ubuntu-20.04 而非 ubuntu-latest，确保产物兼容 glibc 2.31
+    # （Ubuntu 22.04 编译出的 .so 在 CentOS 7/8、旧版 Debian 上会因 glibc 版本过高无法加载）
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run tests
+        # Reason: .cargo/config.toml 已固定 RUST_TEST_THREADS=1，直接 cargo test 即可
+        run: cargo test --release
+
+      - name: Build release dynamic library
+        run: cargo build --release
+
+      - name: Package release artifacts
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          PKG_NAME="skf-mock-${VERSION}-linux-x86_64"
+          mkdir -p "release/${PKG_NAME}"
+
+          # 动态库
+          cp target/release/libskf_mock.so "release/${PKG_NAME}/"
+
+          # 示例配置
+          if [ -f mock_keys.toml ]; then
+            cp mock_keys.toml "release/${PKG_NAME}/"
+          fi
+
+          # 集成测试代码（可参考其使用方式）
+          mkdir -p "release/${PKG_NAME}/tests"
+          cp tests/integration_test.rs "release/${PKG_NAME}/tests/"
+
+          # mPlugin 集成文档
+          if [ -f docs/mPlugin-integration.md ]; then
+            mkdir -p "release/${PKG_NAME}/docs"
+            cp docs/mPlugin-integration.md "release/${PKG_NAME}/docs/"
+          fi
+
+          # README
+          cp README.md "release/${PKG_NAME}/"
+
+          # 打包为 tar.gz
+          cd release
+          tar -czf "${PKG_NAME}.tar.gz" "${PKG_NAME}"
+          ls -lh "${PKG_NAME}.tar.gz"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: release/*.tar.gz
+          generate_release_notes: true
+          body: |
+            ## SKF Mock SDK ${{ github.ref_name }}
+
+            GM/T 0016-2012 智能密码钥匙（UKey）接口纯软件模拟库，可作为 mPlugin 底层 SKF DLL 使用。
+
+            ### 📦 下载说明
+
+            下载 `skf-mock-${{ github.ref_name }}-linux-x86_64.tar.gz` 后解压即可使用：
+
+            ```
+            skf-mock-${{ github.ref_name }}-linux-x86_64/
+            ├── libskf_mock.so              # 动态库
+            ├── mock_keys.toml              # 密钥配置示例
+            ├── tests/
+            │   └── integration_test.rs    # Rust 集成测试（含完整调用示例）
+            ├── docs/
+            │   └── mPlugin-integration.md # mPlugin 集成指南
+            └── README.md
+            ```
+
+            ### 🚀 快速开始
+
+            #### 作为 mPlugin 底层 DLL
+            ```bash
+            tar -xzf skf-mock-${{ github.ref_name }}-linux-x86_64.tar.gz
+            cd skf-mock-${{ github.ref_name }}-linux-x86_64
+            # 在 mPlugin 中通过 SOF_LoadLibrary("./libskf_mock.so") 加载
+            ```
+
+            #### C 程序动态加载
+            ```c
+            void *lib = dlopen("./libskf_mock.so", RTLD_LAZY);
+            ULONG (*ConnectDev)(const char*, HANDLE*) = dlsym(lib, "SKF_ConnectDev");
+            // ...
+            ```
+
+            **详细文档**：https://kintaiw.github.io/0016-skf-mock/
+
+            ### ⚠️ 注意事项
+
+            - 构建环境：Ubuntu 20.04（glibc 2.31+）
+            - 全局单例：同一进程仅支持单设备，多线程访问需自行串行化
+            - 仅供开发测试，配置文件中的示例密钥严禁用于生产环境

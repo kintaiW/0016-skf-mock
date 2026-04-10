@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>快速开始 — SKF Mock SDK</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-inner">
+    <a class="nav-brand" href="index.html">🔑 SKF Mock SDK</a>
+    <ul class="nav-links">
+      <li><a href="index.html">首页</a></li>
+      <li><a href="guide.html" class="active">快速开始</a></li>
+      <li><a href="api.html">接口文档</a></li>
+      <li><a href="config.html">配置说明</a></li>
+      <li><a href="https://github.com/kintaiW/0016-skf-mock/releases" target="_blank">下载 ↗</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="doc-layout">
+  <aside class="sidebar">
+    <ul>
+      <li><a href="#download">下载预编译库</a></li>
+      <li><a href="#requirements">环境要求</a></li>
+      <li><a href="#build">源码编译</a></li>
+      <li><a href="#config">配置文件</a></li>
+      <li><a href="#c-integration">C 动态库集成</a></li>
+      <li><a href="#mplugin">mPlugin 集成</a></li>
+      <li><a href="#test">运行测试</a></li>
+      <li><a href="#env-var">环境变量</a></li>
+    </ul>
+  </aside>
+
+  <main class="doc-main">
+    <h1>快速开始</h1>
+
+    <h2 id="download">下载预编译库</h2>
+    <p>前往 <a href="https://github.com/kintaiW/0016-skf-mock/releases" target="_blank">GitHub Releases</a> 下载对应平台的发布包：</p>
+    <pre><code>skf-mock-linux-x86_64.tar.gz    # Linux x86_64
+  ├── libskf_mock.so            # 动态库
+  ├── mock_keys.toml            # 示例配置
+  ├── tests/integration_test.rs # 集成测试代码
+  └── README.md</code></pre>
+
+    <div class="callout callout-info">
+      <strong>Release 包含：</strong>动态库 + 示例配置 + 测试代码 + README。解压后即可参考测试代码直接使用动态库。
+    </div>
+
+    <h2 id="requirements">环境要求</h2>
+    <ul>
+      <li><strong>使用预编译库</strong>：glibc 2.31+（Ubuntu 20.04 / CentOS 8 / Debian 11 及以上）</li>
+      <li><strong>从源码编译</strong>：Rust 1.75+（<a href="https://rustup.rs" target="_blank">rustup.rs</a>）</li>
+      <li>GCC / Clang（仅 C 集成时需要）</li>
+      <li>Linux x86_64 / Windows x64（WSL 同样支持）</li>
+    </ul>
+
+    <h2 id="build">源码编译</h2>
+    <pre><code># 克隆项目
+git clone https://github.com/kintaiW/0016-skf-mock.git
+cd 0016-skf-mock
+
+# 编译动态库（Linux 输出 libskf_mock.so，Windows 输出 skf_mock.dll）
+cargo build --release
+
+# 运行全部测试（自动单线程，全局单例不支持并发）
+cargo test
+
+# 查看测试日志
+RUST_LOG=debug cargo test -- --nocapture</code></pre>
+
+    <h2 id="config">配置文件</h2>
+    <p>skf-mock 通过 <code>mock_keys.toml</code> 配置设备信息、应用、容器、密钥对。完整格式参见 <a href="config.html">配置说明</a>。</p>
+    <pre><code># mock_keys.toml 最小示例
+[device]
+name = "MockSKFDevice"
+manufacturer = "Mock Manufacturer"
+serial = "MOCK-SKF-001"
+label = "Test Token"
+
+[[applications]]
+name = "MyApp"
+admin_pin = "11111111"
+user_pin = "22222222"
+admin_pin_retry = 6
+user_pin_retry = 6
+
+  [[applications.containers]]
+  name = "MyContainer"
+  sign_private_key = "cc54df687d98e2cac86786f469f04c69b280f19a0eccf8bdf15bfeab778cada0"
+  sign_public_key_x = "28a446e687b7a4c27e2c4d7a8c9f3b2a1e5d6c7b8a9f0e1d2c3b4a5f6e7d8c9a"
+  sign_public_key_y = "3b2a1e5d6c7b8a9f0e1d2c3b4a5f6e7d8c9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c"</code></pre>
+
+    <div class="callout callout-info">
+      配置文件查找顺序：<strong>环境变量 <code>SKF_MOCK_CONFIG</code> → 当前工作目录 <code>./mock_keys.toml</code> → 内置默认值</strong>。缺失时不会报错，但加密相关功能需配置后才能使用。
+    </div>
+
+    <h2 id="c-integration">C 动态库集成</h2>
+    <p>skf-mock 输出标准 cdylib，C 程序通过 <code>dlopen</code> / <code>LoadLibrary</code> 动态加载：</p>
+    <pre><code><span class="cm">/* main.c */</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;dlfcn.h&gt;</span>
+
+<span class="kw">typedef unsigned long</span> ULONG;
+<span class="kw">typedef void</span>* HANDLE;
+
+<span class="kw">int</span> main() {
+    <span class="kw">void</span> *lib = dlopen(<span class="str">"./libskf_mock.so"</span>, RTLD_LAZY);
+    <span class="kw">if</span> (!lib) { fprintf(stderr, <span class="str">"%s\n"</span>, dlerror()); <span class="kw">return</span> 1; }
+
+    <span class="cm">/* 连接设备 */</span>
+    ULONG (*ConnectDev)(<span class="kw">const char</span>*, HANDLE*);
+    ConnectDev = dlsym(lib, <span class="str">"SKF_ConnectDev"</span>);
+    HANDLE hDev = NULL;
+    ULONG rv = ConnectDev(<span class="str">"MockSKFDevice"</span>, &amp;hDev);
+    printf(<span class="str">"SKF_ConnectDev = 0x%lX\n"</span>, rv);
+
+    dlclose(lib);
+    <span class="kw">return</span> 0;
+}</code></pre>
+    <p>编译：</p>
+    <pre><code>gcc main.c -o demo -ldl
+LD_LIBRARY_PATH=. ./demo</code></pre>
+
+    <h2 id="mplugin">mPlugin 集成</h2>
+    <p>skf-mock 可直接作为 <strong>龙脉 mPlugin</strong> 的底层 SKF DLL 使用，无需修改 JS 代码：</p>
+    <pre><code><span class="cm">// 方式 A：JS 直接指定（推荐）</span>
+SOF_LoadLibrary(<span class="str">"libskf_mock.so"</span>);       <span class="cm">// Linux</span>
+SOF_LoadLibrary(<span class="str">"skf_mock.dll"</span>);          <span class="cm">// Windows</span></code></pre>
+    <pre><code># 方式 B：覆盖原有 DLL
+# Windows
+copy target\release\skf_mock.dll  &lt;mPlugin目录&gt;\mtoken_gm3000.dll
+
+# Linux
+cp target/release/libskf_mock.so  &lt;mPlugin目录&gt;/libgm3000.1.0.so</code></pre>
+
+    <h2 id="test">运行测试</h2>
+    <p>项目包含完整的集成测试，覆盖设备连接、PIN 验证、SM2 签名验签、SM4 加解密等场景：</p>
+    <pre><code># 全量测试
+cargo test
+
+# 运行单个测试
+cargo test test_sm2_sign_verify
+
+# 使用自定义配置
+SKF_MOCK_CONFIG=./my_keys.toml cargo test</code></pre>
+
+    <h2 id="env-var">环境变量</h2>
+    <table>
+      <tr><th>变量</th><th>说明</th></tr>
+      <tr><td><code>SKF_MOCK_CONFIG</code></td><td>指定 <code>mock_keys.toml</code> 路径，优先级最高</td></tr>
+      <tr><td><code>RUST_LOG</code></td><td>日志级别：<code>debug</code> / <code>info</code> / <code>warn</code> / <code>error</code></td></tr>
+      <tr><td><code>RUST_TEST_THREADS</code></td><td><code>.cargo/config.toml</code> 已固定为 1（全局单例约束）</td></tr>
+    </table>
+
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>SKF Mock SDK · 基于 <a href="https://crates.io/crates/libsmx">libsmx</a> · GM/T 0016-2012</p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,2 @@
+# GitHub Pages Jekyll 配置 —— 禁用 Jekyll 自动构建，直接使用 HTML 源文件
+include: []

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>配置说明 — SKF Mock SDK</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-inner">
+    <a class="nav-brand" href="index.html">🔑 SKF Mock SDK</a>
+    <ul class="nav-links">
+      <li><a href="index.html">首页</a></li>
+      <li><a href="guide.html">快速开始</a></li>
+      <li><a href="api.html">接口文档</a></li>
+      <li><a href="config.html" class="active">配置说明</a></li>
+      <li><a href="https://github.com/kintaiW/0016-skf-mock/releases" target="_blank">下载 ↗</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="doc-layout">
+  <aside class="sidebar">
+    <ul>
+      <li><a href="#overview">概述</a></li>
+      <li><a href="#search-order">查找顺序</a></li>
+      <li><a href="#device">[device] 设备信息</a></li>
+      <li><a href="#applications">[[applications]] 应用</a></li>
+      <li><a href="#containers">容器与密钥对</a></li>
+      <li><a href="#cert-format">证书格式</a></li>
+      <li><a href="#full-example">完整示例</a></li>
+      <li><a href="#env-var">环境变量</a></li>
+    </ul>
+  </aside>
+
+  <main class="doc-main">
+    <h1>配置说明</h1>
+
+    <h2 id="overview">概述</h2>
+    <p>skf-mock 通过 TOML 配置文件 <code>mock_keys.toml</code> 模拟真实 USB Key 的设备信息、应用、容器、密钥对和证书。配置文件<strong>可选</strong>，缺失时使用内置默认值（不报错），但加密相关功能需配置后才能使用。</p>
+
+    <h2 id="search-order">查找顺序</h2>
+    <p>skf-mock 按以下顺序查找配置文件（从高到低）：</p>
+    <table>
+      <thead>
+        <tr><th>优先级</th><th>方式</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>环境变量 <code>SKF_MOCK_CONFIG</code></td><td>指定配置文件绝对路径或相对路径</td></tr>
+        <tr><td>2</td><td>当前工作目录 <code>./mock_keys.toml</code></td><td>启动进程时 shell 的 <code>pwd</code></td></tr>
+        <tr><td>3</td><td>内置默认值</td><td>空应用、空容器，不报错</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="device">[device] 设备信息</h2>
+    <p>配置 Mock 设备的基本信息，将在 <code>SKF_GetDevInfo</code> 中返回。</p>
+    <pre><code>[device]
+name         = "MockSKFDevice"      <span class="cm"># 设备名称，SKF_ConnectDev 需要匹配</span>
+manufacturer = "Mock Manufacturer"  <span class="cm"># 厂商名</span>
+serial       = "MOCK-SKF-001"       <span class="cm"># 序列号</span>
+label        = "Test Token"         <span class="cm"># 用户标签</span></code></pre>
+
+    <h2 id="applications">[[applications]] 应用配置</h2>
+    <p>每个应用独立配置 PIN 和容器。可以配置多个应用。</p>
+    <pre><code>[[applications]]
+name            = "MyApp"       <span class="cm"># 应用名称</span>
+admin_pin       = "11111111"    <span class="cm"># 管理员 PIN</span>
+user_pin        = "22222222"    <span class="cm"># 用户 PIN</span>
+admin_pin_retry = 6             <span class="cm"># 管理员 PIN 最大重试次数</span>
+user_pin_retry  = 6             <span class="cm"># 用户 PIN 最大重试次数</span></code></pre>
+
+    <div class="callout callout-warn">
+      <strong>PIN 验证规则</strong>：PIN 错误时返回 <code>SAR_PIN_INCORRECT</code> 并递减重试计数；重试次数归零后返回 <code>SAR_PIN_LOCKED</code>。重启进程后重试计数重置（Mock 不持久化）。
+    </div>
+
+    <h2 id="containers">[[applications.containers]] 容器与密钥对</h2>
+    <p>每个容器包含签名密钥对、加密密钥对和对应证书。SM2 密钥使用十六进制字符串表示。</p>
+    <pre><code>  [[applications.containers]]
+  name = "MyContainer"
+
+  <span class="cm"># ── 签名密钥对（SGD_SM2_1）──</span>
+  sign_private_key  = "cc54df687d98e2cac86786f469f04c69b280f19a0eccf8bdf15bfeab778cada0"
+  sign_public_key_x = "28a446e687b7a4c27e2c4d7a8c9f3b2a1e5d6c7b8a9f0e1d2c3b4a5f6e7d8c9a"
+  sign_public_key_y = "3b2a1e5d6c7b8a9f0e1d2c3b4a5f6e7d8c9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c"
+  sign_cert = <span class="str">"""
+  MIIB...（base64 DER 格式证书，支持换行）
+  """</span>
+
+  <span class="cm"># ── 加密密钥对（SGD_SM2_3）──</span>
+  enc_private_key  = "..."
+  enc_public_key_x = "..."
+  enc_public_key_y = "..."
+  enc_cert = <span class="str">"""..."""</span></code></pre>
+
+    <div class="callout callout-info">
+      <strong>密钥格式约定</strong>：
+      <ul>
+        <li>私钥：32 字节 hex（64 字符）</li>
+        <li>公钥坐标 x/y：各 32 字节 hex（64 字符）</li>
+        <li>证书：DER 格式，base64 编码，支持多行字符串（<code>"""..."""</code>）</li>
+      </ul>
+    </div>
+
+    <h2 id="cert-format">证书格式示例</h2>
+    <pre><code>sign_cert = <span class="str">"""
+MIICBTCCAaugAwIBAgIJALVY9GVU3bT7MAoGCCqBHM9VAYN1MGQxCzAJBgNVBAYT
+AkNOMRAwDgYDVQQIDAdCZWlqaW5nMRAwDgYDVQQHDAdCZWlqaW5nMQ8wDQYDVQQK
+DAZNb2NrQ0ExDjAMBgNVBAsMBURldlBrMRAwDgYDVQQDDAdNb2NrVXNlcjAeFw0y
+... (省略中间行)
+"""</span></code></pre>
+    <p>证书从 <a href="https://www.gmssl.cn/gmssl/index.jsp" target="_blank">GmSSL</a> 或其他国密 CA 工具导出的 PEM 去除头尾后可直接使用。</p>
+
+    <h2 id="full-example">完整示例</h2>
+    <pre><code><span class="cm"># mock_keys.toml — 完整示例</span>
+
+[device]
+name         = "MockSKFDevice"
+manufacturer = "Mock Manufacturer"
+serial       = "MOCK-SKF-001"
+label        = "Test Token"
+
+<span class="cm"># ─── 应用 1：业务应用 ───</span>
+[[applications]]
+name            = "BusinessApp"
+admin_pin       = "11111111"
+user_pin        = "22222222"
+admin_pin_retry = 6
+user_pin_retry  = 6
+
+  [[applications.containers]]
+  name = "SignContainer"
+  sign_private_key  = "cc54df687d98e2cac86786f469f04c69b280f19a0eccf8bdf15bfeab778cada0"
+  sign_public_key_x = "28a446e687b7a4c27e2c4d7a8c9f3b2a1e5d6c7b8a9f0e1d2c3b4a5f6e7d8c9a"
+  sign_public_key_y = "3b2a1e5d6c7b8a9f0e1d2c3b4a5f6e7d8c9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c"
+
+  [[applications.containers]]
+  name = "EncContainer"
+  enc_private_key  = "aa11bb22cc33dd44ee55ff66001122334455667788990011223344556677aabb"
+  enc_public_key_x = "11223344556677889900aabbccddeeff00112233445566778899aabbccddeeff"
+  enc_public_key_y = "ffeeddccbbaa00998877665544332211ffeeddccbbaa0099887766554433221100"
+
+<span class="cm"># ─── 应用 2：测试应用 ───</span>
+[[applications]]
+name            = "TestApp"
+admin_pin       = "88888888"
+user_pin        = "12345678"
+admin_pin_retry = 10
+user_pin_retry  = 10</code></pre>
+
+    <h2 id="env-var">相关环境变量</h2>
+    <table>
+      <thead>
+        <tr><th>变量</th><th>说明</th><th>示例</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>SKF_MOCK_CONFIG</code></td>
+          <td>指定配置文件路径</td>
+          <td><code>/etc/skf/mock_keys.toml</code></td>
+        </tr>
+        <tr>
+          <td><code>RUST_LOG</code></td>
+          <td>日志级别</td>
+          <td><code>debug</code> / <code>info</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-warn">
+      <strong>⚠️ 安全警告</strong>：配置文件中的示例密钥为公开测试值，<strong>严禁用于生产环境</strong>。skf-mock 仅供开发和测试使用。
+    </div>
+
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>SKF Mock SDK · 基于 <a href="https://crates.io/crates/libsmx">libsmx</a> · GM/T 0016-2012</p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>接口文档 — SKF Mock SDK</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-inner">
+    <a class="nav-brand" href="index.html">🔑 SKF Mock SDK</a>
+    <ul class="nav-links">
+      <li><a href="index.html">首页</a></li>
+      <li><a href="guide.html">快速开始</a></li>
+      <li><a href="api.html" class="active">接口文档</a></li>
+      <li><a href="config.html">配置说明</a></li>
+      <li><a href="https://github.com/kintaiW/0016-skf-mock/releases" target="_blank">下载 ↗</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="doc-layout">
+  <aside class="sidebar">
+    <ul>
+      <li class="sidebar-group">设备管理</li>
+      <li><a href="#enum-dev">SKF_EnumDev</a></li>
+      <li><a href="#connect-dev">SKF_ConnectDev</a></li>
+      <li><a href="#disconnect-dev">SKF_DisConnectDev</a></li>
+      <li><a href="#get-dev-info">SKF_GetDevInfo</a></li>
+      <li><a href="#get-dev-state">SKF_GetDevState</a></li>
+      <li class="sidebar-group">应用与 PIN</li>
+      <li><a href="#enum-app">SKF_EnumApplication</a></li>
+      <li><a href="#open-app">SKF_OpenApplication</a></li>
+      <li><a href="#close-app">SKF_CloseApplication</a></li>
+      <li><a href="#verify-pin">SKF_VerifyPIN</a></li>
+      <li><a href="#change-pin">SKF_ChangePIN</a></li>
+      <li><a href="#get-pin-info">SKF_GetPINInfo</a></li>
+      <li class="sidebar-group">容器管理</li>
+      <li><a href="#enum-container">SKF_EnumContainer</a></li>
+      <li><a href="#open-container">SKF_OpenContainer</a></li>
+      <li><a href="#close-container">SKF_CloseContainer</a></li>
+      <li class="sidebar-group">SM2 运算</li>
+      <li><a href="#gen-ecc">SKF_GenECCKeyPair</a></li>
+      <li><a href="#ecc-sign">SKF_ECCSignData</a></li>
+      <li><a href="#ecc-verify">SKF_ECCVerify</a></li>
+      <li><a href="#ext-ecc-encrypt">SKF_ExtECCEncrypt</a></li>
+      <li><a href="#ext-ecc-decrypt">SKF_ExtECCDecrypt</a></li>
+      <li><a href="#export-pub">SKF_ExportPublicKey</a></li>
+      <li class="sidebar-group">SM4 运算</li>
+      <li><a href="#set-symm-key">SKF_SetSymmKey</a></li>
+      <li><a href="#encrypt-init">SKF_EncryptInit</a></li>
+      <li><a href="#encrypt">SKF_Encrypt</a></li>
+      <li><a href="#decrypt-init">SKF_DecryptInit</a></li>
+      <li><a href="#decrypt">SKF_Decrypt</a></li>
+      <li class="sidebar-group">SM3 哈希</li>
+      <li><a href="#digest-init">SKF_DigestInit</a></li>
+      <li><a href="#digest">SKF_Digest</a></li>
+      <li><a href="#digest-update">SKF_DigestUpdate</a></li>
+      <li><a href="#digest-final">SKF_DigestFinal</a></li>
+      <li class="sidebar-group">证书</li>
+      <li><a href="#import-cert">SKF_ImportCertificate</a></li>
+      <li><a href="#export-cert">SKF_ExportCertificate</a></li>
+      <li class="sidebar-group">错误码</li>
+      <li><a href="#error-codes">错误码列表</a></li>
+    </ul>
+  </aside>
+
+  <main class="doc-main">
+    <h1>接口文档</h1>
+    <p>所有函数返回 <code>ULONG</code>（即 <code>unsigned long</code>），成功返回 <code>SAR_OK (0)</code>，失败返回对应错误码。句柄类型均为 <code>void*</code>（<code>HANDLE</code>）。</p>
+
+    <div class="callout callout-warn">
+      <strong>0016-skf-mock 不附带 <code>skf.h</code> 头文件</strong>。C 调用方可通过 <code>dlopen</code>/<code>dlsym</code> 动态加载，或参考 GM/T 0016-2012 规范自行声明函数原型。Rust 调用方可直接引用 <code>skf_mock::ffi</code> 模块。
+    </div>
+
+    <!-- ===== 设备管理 ===== -->
+    <h2>设备管理</h2>
+
+    <div class="api-entry" id="enum-dev">
+      <div class="api-sig">ULONG SKF_EnumDev(BOOL bPresent, LPSTR szNameList, ULONG *pulSize)</div>
+      <p>枚举当前连接的所有设备名称（两阶段查询模式）。</p>
+    </div>
+
+    <div class="api-entry" id="connect-dev">
+      <div class="api-sig">ULONG SKF_ConnectDev(LPSTR szName, HANDLE *phDev)</div>
+      <p>连接指定设备，返回设备句柄。Mock 实现中会加载 <code>mock_keys.toml</code> 配置。</p>
+      <table>
+        <tr><th>参数</th><th>方向</th><th>说明</th></tr>
+        <tr><td><code>szName</code></td><td>输入</td><td>设备名称字符串（必须与配置中一致）</td></tr>
+        <tr><td><code>phDev</code></td><td>输出</td><td>设备句柄</td></tr>
+      </table>
+    </div>
+
+    <div class="api-entry" id="disconnect-dev">
+      <div class="api-sig">ULONG SKF_DisConnectDev(HANDLE hDev)</div>
+      <p>断开设备连接，释放所有关联资源。</p>
+    </div>
+
+    <div class="api-entry" id="get-dev-info">
+      <div class="api-sig">ULONG SKF_GetDevInfo(HANDLE hDev, DEVINFO *pDevInfo)</div>
+      <p>获取设备信息（厂商、型号、序列号、算法支持等）。</p>
+    </div>
+
+    <div class="api-entry" id="get-dev-state">
+      <div class="api-sig">ULONG SKF_GetDevState(LPSTR szDevName, ULONG *pulDevState)</div>
+      <p>查询设备状态（存在/不存在）。</p>
+    </div>
+
+    <!-- ===== 应用与 PIN ===== -->
+    <h2>应用与 PIN 管理</h2>
+
+    <div class="api-entry" id="enum-app">
+      <div class="api-sig">ULONG SKF_EnumApplication(HANDLE hDev, LPSTR szAppName, ULONG *pulSize)</div>
+      <p>枚举设备中所有应用名称（两阶段查询模式）。</p>
+    </div>
+
+    <div class="api-entry" id="open-app">
+      <div class="api-sig">ULONG SKF_OpenApplication(HANDLE hDev, LPSTR szAppName, HANDLE *phApp)</div>
+      <p>打开指定应用，返回应用句柄（基址 0x1001）。</p>
+    </div>
+
+    <div class="api-entry" id="close-app">
+      <div class="api-sig">ULONG SKF_CloseApplication(HANDLE hApp)</div>
+      <p>关闭应用。</p>
+    </div>
+
+    <div class="api-entry" id="verify-pin">
+      <div class="api-sig">ULONG SKF_VerifyPIN(HANDLE hApp, ULONG ulPINType, LPSTR szPIN, ULONG *pulRetryCount)</div>
+      <p>验证 PIN 码。成功后获得对容器和密钥的访问权限。</p>
+      <table>
+        <tr><th>参数</th><th>方向</th><th>说明</th></tr>
+        <tr><td><code>ulPINType</code></td><td>输入</td><td><code>0</code>=管理员 PIN，<code>1</code>=用户 PIN</td></tr>
+        <tr><td><code>szPIN</code></td><td>输入</td><td>PIN 字符串</td></tr>
+        <tr><td><code>pulRetryCount</code></td><td>输出</td><td>剩余重试次数（PIN 错误时）</td></tr>
+      </table>
+    </div>
+
+    <div class="api-entry" id="change-pin">
+      <div class="api-sig">ULONG SKF_ChangePIN(HANDLE hApp, ULONG ulPINType, LPSTR szOldPin, LPSTR szNewPin, ULONG *pulRetryCount)</div>
+      <p>修改 PIN 码。</p>
+    </div>
+
+    <div class="api-entry" id="get-pin-info">
+      <div class="api-sig">ULONG SKF_GetPINInfo(HANDLE hApp, ULONG ulPINType, ULONG *pulMaxRetryCount, ULONG *pulRemainRetryCount, BOOL *pbDefaultPin)</div>
+      <p>查询 PIN 配置信息。</p>
+    </div>
+
+    <!-- ===== 容器管理 ===== -->
+    <h2>容器管理</h2>
+
+    <div class="api-entry" id="enum-container">
+      <div class="api-sig">ULONG SKF_EnumContainer(HANDLE hApp, LPSTR szContainerName, ULONG *pulSize)</div>
+      <p>枚举应用下的所有容器（两阶段查询模式）。</p>
+    </div>
+
+    <div class="api-entry" id="open-container">
+      <div class="api-sig">ULONG SKF_OpenContainer(HANDLE hApp, LPSTR szContainerName, HANDLE *phContainer)</div>
+      <p>打开容器，返回容器句柄（基址 0x2001）。容器内存储签名密钥对、加密密钥对和对应证书。</p>
+    </div>
+
+    <div class="api-entry" id="close-container">
+      <div class="api-sig">ULONG SKF_CloseContainer(HANDLE hContainer)</div>
+      <p>关闭容器。</p>
+    </div>
+
+    <!-- ===== SM2 运算 ===== -->
+    <h2>SM2 非对称运算</h2>
+
+    <div class="api-entry" id="gen-ecc">
+      <div class="api-sig">ULONG SKF_GenECCKeyPair(HANDLE hContainer, ULONG ulAlgId, ECCPUBLICKEYBLOB *pBlob)</div>
+      <p>在容器内生成 SM2 密钥对。算法标识：<code>SGD_SM2_1</code>（签名）/ <code>SGD_SM2_3</code>（加密）。</p>
+    </div>
+
+    <div class="api-entry" id="ecc-sign">
+      <div class="api-sig">ULONG SKF_ECCSignData(HANDLE hContainer, BYTE *pbData, ULONG ulDataLen, ECCSIGNATUREBLOB *pSignature)</div>
+      <p>使用容器内签名私钥对数据进行 SM2 签名。<strong>输入已是哈希后的 32 字节</strong>，或按规范传入 Z||M 的哈希。</p>
+    </div>
+
+    <div class="api-entry" id="ecc-verify">
+      <div class="api-sig">ULONG SKF_ECCVerify(HANDLE hDev, ECCPUBLICKEYBLOB *pECCPubKeyBlob, BYTE *pbData, ULONG ulDataLen, ECCSIGNATUREBLOB *pSignature)</div>
+      <p>使用外部公钥验证 SM2 签名。</p>
+    </div>
+
+    <div class="api-entry" id="ext-ecc-encrypt">
+      <div class="api-sig">ULONG SKF_ExtECCEncrypt(HANDLE hDev, ECCPUBLICKEYBLOB *pECCPubKeyBlob, BYTE *pbPlainText, ULONG ulPlainTextLen, ECCCIPHERBLOB *pCipherText)</div>
+      <p>使用外部公钥进行 SM2 加密。</p>
+    </div>
+
+    <div class="api-entry" id="ext-ecc-decrypt">
+      <div class="api-sig">ULONG SKF_ExtECCDecrypt(HANDLE hContainer, ECCCIPHERBLOB *pCipher, BYTE *pbPlain, ULONG *pulPlainLen)</div>
+      <p>使用容器内加密私钥进行 SM2 解密。</p>
+    </div>
+
+    <div class="api-entry" id="export-pub">
+      <div class="api-sig">ULONG SKF_ExportPublicKey(HANDLE hContainer, BOOL bSignFlag, BYTE *pbBlob, ULONG *pulBlobLen)</div>
+      <p>导出容器内签名公钥或加密公钥（<code>ECCPUBLICKEYBLOB</code> 格式）。</p>
+    </div>
+
+    <!-- ===== SM4 运算 ===== -->
+    <h2>SM4 对称运算</h2>
+
+    <div class="api-entry" id="set-symm-key">
+      <div class="api-sig">ULONG SKF_SetSymmKey(HANDLE hDev, BYTE *pbKey, ULONG ulAlgID, HANDLE *phKey)</div>
+      <p>导入对称密钥，返回密钥句柄（基址 0x3001）。</p>
+    </div>
+
+    <div class="api-entry" id="encrypt-init">
+      <div class="api-sig">ULONG SKF_EncryptInit(HANDLE hKey, BLOCKCIPHERPARAM EncryptParam)</div>
+      <p>初始化加密运算。<code>BLOCKCIPHERPARAM.PaddingType = 1</code> 启用 PKCS7 填充。</p>
+    </div>
+
+    <div class="api-entry" id="encrypt">
+      <div class="api-sig">ULONG SKF_Encrypt(HANDLE hKey, BYTE *pbData, ULONG ulDataLen, BYTE *pbEncryptedData, ULONG *pulEncryptedLen)</div>
+      <p>单组 SM4 加密（ECB/CBC）。</p>
+    </div>
+
+    <div class="api-entry" id="decrypt-init">
+      <div class="api-sig">ULONG SKF_DecryptInit(HANDLE hKey, BLOCKCIPHERPARAM DecryptParam)</div>
+      <p>初始化解密运算。</p>
+    </div>
+
+    <div class="api-entry" id="decrypt">
+      <div class="api-sig">ULONG SKF_Decrypt(HANDLE hKey, BYTE *pbEncryptedData, ULONG ulEncryptedLen, BYTE *pbData, ULONG *pulDataLen)</div>
+      <p>单组 SM4 解密。</p>
+    </div>
+
+    <!-- ===== SM3 哈希 ===== -->
+    <h2>SM3 哈希运算</h2>
+
+    <div class="api-entry" id="digest-init">
+      <div class="api-sig">ULONG SKF_DigestInit(HANDLE hDev, ULONG ulAlgID, ECCPUBLICKEYBLOB *pPubKey, BYTE *pucID, ULONG ulIDLen, HANDLE *phHash)</div>
+      <p>初始化哈希运算，返回哈希句柄（基址 0x4001）。若传入公钥，会自动计算 <code>Z = SM3(entlen||uid||curve_params||pubkey)</code> 并写入缓冲头部（用于 SM2 签名前的预哈希）。</p>
+    </div>
+
+    <div class="api-entry" id="digest">
+      <div class="api-sig">ULONG SKF_Digest(HANDLE hHash, BYTE *pbData, ULONG ulDataLen, BYTE *pbHashData, ULONG *pulHashLen)</div>
+      <p>单组哈希：一次性完成 Update + Final。</p>
+    </div>
+
+    <div class="api-entry" id="digest-update">
+      <div class="api-sig">ULONG SKF_DigestUpdate(HANDLE hHash, BYTE *pbData, ULONG ulDataLen)</div>
+      <p>追加哈希数据。</p>
+    </div>
+
+    <div class="api-entry" id="digest-final">
+      <div class="api-sig">ULONG SKF_DigestFinal(HANDLE hHash, BYTE *pHashData, ULONG *pulHashLen)</div>
+      <p>完成哈希计算，输出 32 字节 SM3 摘要。</p>
+    </div>
+
+    <!-- ===== 证书 ===== -->
+    <h2>证书管理</h2>
+
+    <div class="api-entry" id="import-cert">
+      <div class="api-sig">ULONG SKF_ImportCertificate(HANDLE hContainer, BOOL bSignFlag, BYTE *pbCert, ULONG ulCertLen)</div>
+      <p>向容器导入证书（DER 格式）。</p>
+    </div>
+
+    <div class="api-entry" id="export-cert">
+      <div class="api-sig">ULONG SKF_ExportCertificate(HANDLE hContainer, BOOL bSignFlag, BYTE *pbCert, ULONG *pulCertLen)</div>
+      <p>从容器导出证书。</p>
+    </div>
+
+    <!-- ===== 错误码 ===== -->
+    <h2 id="error-codes">错误码列表</h2>
+    <table>
+      <thead>
+        <tr><th>常量</th><th>值</th><th>含义</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>SAR_OK</code></td><td><code>0x00000000</code></td><td>成功</td></tr>
+        <tr><td><code>SAR_FAIL</code></td><td><code>0x0A000001</code></td><td>一般失败（含设备未连接）</td></tr>
+        <tr><td><code>SAR_UNKNOWNERR</code></td><td><code>0x0A000002</code></td><td>未知错误</td></tr>
+        <tr><td><code>SAR_NOTSUPPORTYETERR</code></td><td><code>0x0A000003</code></td><td>不支持（RSA/MAC 等 Stub）</td></tr>
+        <tr><td><code>SAR_FILEERR</code></td><td><code>0x0A000004</code></td><td>文件错误</td></tr>
+        <tr><td><code>SAR_INVALIDHANDLEERR</code></td><td><code>0x0A000005</code></td><td>句柄无效</td></tr>
+        <tr><td><code>SAR_INVALIDPARAMERR</code></td><td><code>0x0A000006</code></td><td>参数无效（空指针等）</td></tr>
+        <tr><td><code>SAR_READFILEERR</code></td><td><code>0x0A000007</code></td><td>读文件错误</td></tr>
+        <tr><td><code>SAR_WRITEFILEERR</code></td><td><code>0x0A000008</code></td><td>写文件错误</td></tr>
+        <tr><td><code>SAR_NOTINITIALIZEERR</code></td><td><code>0x0A00000C</code></td><td>未调用 EncryptInit/DecryptInit</td></tr>
+        <tr><td><code>SAR_INDATALENERR</code></td><td><code>0x0A000011</code></td><td>输出缓冲太小（两阶段查询模式）</td></tr>
+        <tr><td><code>SAR_PIN_INCORRECT</code></td><td><code>0x0A000029</code></td><td>PIN 错误</td></tr>
+        <tr><td><code>SAR_PIN_LOCKED</code></td><td><code>0x0A00002A</code></td><td>PIN 锁定</td></tr>
+        <tr><td><code>SAR_KEYNOTFOUNDERR</code></td><td><code>0x0A00001B</code></td><td>容器内无对应密钥对</td></tr>
+      </tbody>
+    </table>
+
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>SKF Mock SDK · 基于 <a href="https://crates.io/crates/libsmx">libsmx</a> · GM/T 0016-2012</p>
+  </div>
+</footer>
+
+</body>
+</html>
