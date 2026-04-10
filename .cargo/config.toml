@@ -1,0 +1,3 @@
+# Reason: 集成测试共享全局设备单例（OnceLock Mutex），必须单线程运行避免状态竞争
+[env]
+RUST_TEST_THREADS = "1"
