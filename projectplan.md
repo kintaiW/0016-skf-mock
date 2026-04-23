@@ -628,3 +628,71 @@ hex = "0.4"
 5. **Z 值计算**：`DigestInit` 传入公钥时预计算 Z 值写入缓冲头部，`DigestUpdate` 直接追加消息
 6. **SKF_ImportECCKeyPair 简化**：信封私钥解密需要容器本身的加密私钥，Mock 中仅存公钥（零私钥占位）
 7. **ECCCIPHERBLOB 固定长度**：规范中 `Cipher[1]` 为变长，Mock 定为 `[u8; 512]`（最大明文限制）
+
+---
+
+## 十三、MCP Server 集成（2026-04-22）
+
+### 13.1 目标
+
+为 skf-mock 添加 MCP Server 二进制可执行文件，让 Claude/Cursor 等 LLM 通过 Streamable HTTP 直接调用 SM2/SM3/SM4 国密能力（模拟终端 USB Key）。
+
+### 13.2 完成情况
+
+- [x] 修改 `Cargo.toml`：保留 `[lib]` cdylib+rlib，新增 `[[bin]] skf-mcp`，添加 rmcp/axum/tokio/clap/tracing 等依赖
+- [x] 新建 `src/bin/mcp_server.rs`：单文件实现 12 个 MCP Tool + ServerHandler
+- [x] `cargo check --bin skf-mcp` 零错误
+
+### 13.3 已实现的 12 个 MCP Tool
+
+| 工具名 | 对应 SKF API | 说明 |
+|-------|-------------|------|
+| `skf_device_info` | SKF_GetDevInfo | 获取设备状态和默认句柄 |
+| `skf_open_app` | SKF_OpenApplication + SKF_VerifyPIN | 打开应用验证 PIN，返回句柄 |
+| `skf_list_containers` | SKF_EnumContainer | 列出容器名称 |
+| `skf_gen_ecc_keypair_tool` | SKF_GenECCKeyPair | 生成 SM2 密钥对 |
+| `skf_import_cert` | SKF_ImportCertificate | 导入证书 DER |
+| `skf_export_cert` | SKF_ExportCertificate/PublicKey | 导出证书或公钥 |
+| `skf_sm2_sign` | SKF_ECCSignData | 使用容器签名私钥签名 |
+| `skf_sm2_verify` | SKF_ECCVerify | 使用外部公钥验签 |
+| `skf_sm2_ext_sign` | SKF_ExtECCSign | 外部私钥签名 |
+| `skf_sm2_ext_verify` | SKF_ExtECCVerify | 外部公钥验签 |
+| `skf_sm4_crypt` | SKF_SetSymmKey + SKF_Encrypt/Decrypt | SM4 加解密（CBC/ECB）|
+| `skf_sm3_digest` | sm3_ops | SM3 摘要（可选 Z 值前缀）|
+
+### 13.4 关键设计决策
+
+1. **预初始化句柄**：启动时调用 `init_skf_device()` 连接设备、打开第一个应用/容器，把句柄存在 `SkfMcpServer` struct，LLM 调用 `skf_device_info` 即可获取默认 `container_handle`，无需手动管理句柄生命周期
+2. **参数约定**：所有输入输出均 hex 编码；错误返回 `{"error":"描述（错误码: 0xXXXXXXXX）"}`
+3. **SM3 Z 值**：`skf_sm3_digest` 提供 `public_key_hex` 时直接调用底层 `sm3_ops::sm2_z_value` + `sm3_ops::sm3_digest`，避免 FFI 句柄管理复杂性
+4. **SM4 pre_hashed**：`skf_sm2_sign` 的 `pre_hashed=true` 路径从容器取出私钥后直接调用底层 `sm2_ops::sm2_sign`，绕过 SKF 的自动 Z 值处理
+5. **Streamable HTTP**：使用 `StreamableHttpServerConfig::with_stateful_mode(false)` + `LocalSessionManager`，适合本地 mock 场景
+
+### 13.5 启动方式
+
+```bash
+# 构建
+cargo build --bin skf-mcp --release
+
+# 启动（默认端口 16000）
+./target/release/skf-mcp
+
+# 指定端口
+./target/release/skf-mcp --port 18000
+
+# MCP 端点
+# POST http://localhost:16000/mcp
+```
+
+### 13.6 Claude/Cursor MCP 配置示例
+
+```json
+{
+  "mcpServers": {
+    "skf-mock": {
+      "url": "http://localhost:16000/mcp"
+    }
+  }
+}
+```
+

@@ -7,14 +7,28 @@ edition = "2021"
 name = "skf_mock"
 crate-type = ["cdylib", "rlib"]
 
+[[bin]]
+name = "skf-mcp"
+path = "src/bin/mcp_server.rs"
+
 [dependencies]
 libsmx = "0.3"
 rand = "0.8"
 hex = "0.4"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 toml = "0.8"
 log = "0.4"
 env_logger = "0.11"
+# MCP Server 依赖
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+clap = { version = "4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio-util = "0.7"
+rmcp = { version = "1", features = ["server", "transport-streamable-http-server"] }
+anyhow = "1"
 
 [dev-dependencies]
 hex = "0.4"
